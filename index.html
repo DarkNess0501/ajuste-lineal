@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Ajuste Lineal</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body{
+      font-family: Arial, sans-serif;
+      background:#f4f6f9;
+      margin:0;
+      padding:20px;
+    }
+
+    .container{
+      max-width:1000px;
+      margin:auto;
+      background:white;
+      padding:25px;
+      border-radius:12px;
+      box-shadow:0 0 10px rgba(0,0,0,0.1);
+    }
+
+    h1{
+      text-align:center;
+      color:#333;
+    }
+
+    table{
+      width:100%;
+      border-collapse:collapse;
+      margin-top:20px;
+    }
+
+    th, td{
+      border:1px solid #ccc;
+      padding:10px;
+      text-align:center;
+    }
+
+    input{
+      width:90%;
+      padding:6px;
+      text-align:center;
+    }
+
+    button{
+      margin-top:20px;
+      padding:12px 20px;
+      border:none;
+      background:#007bff;
+      color:white;
+      font-size:16px;
+      border-radius:8px;
+      cursor:pointer;
+    }
+
+    button:hover{
+      background:#0056b3;
+    }
+
+    .resultados{
+      margin-top:25px;
+      background:#eef3ff;
+      padding:15px;
+      border-radius:10px;
+    }
+
+    canvas{
+      margin-top:30px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <h1>Ajuste Lineal</h1>
+
+  <table id="tabla">
+    <thead>
+      <tr>
+        <th>X</th>
+        <th>Y</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      <tr>
+        <td><input type="number" step="0.1" value="0"></td>
+        <td><input type="number" step="0.1" value="0"></td>
+      </tr>
+
+      <tr>
+        <td><input type="number" step="0.1" value="0"></td>
+        <td><input type="number" step="0.1" value="0"></td>
+      </tr>
+
+      <tr>
+        <td><input type="number" step="0.1" value="0"></td>
+        <td><input type="number" step="0.1" value="0"></td>
+      </tr>
+
+      <tr>
+        <td><input type="number" step="0.1" value="0"></td>
+        <td><input type="number" step="0.1" value="0"></td>
+      </tr>
+
+      <tr>
+        <td><input type="number" step="0.1" value="0"></td>
+        <td><input type="number" step="0.1" value="0"></td>
+      </tr>
+    </tbody>
+  </table>
+
+  
+<div style="margin-top:20px;">
+<button onclick="agregarFila()">Agregar fila</button>
+<button onclick="eliminarFila()" style="margin-left:10px;">Eliminar fila</button>
+<button onclick="calcular()" style="margin-left:10px;">Calcular Ajuste Lineal</button>
+</div>
+
+
+  <div class="resultados">
+    <h3>Resultados</h3>
+
+    <p><strong>Pendiente (m):</strong> <span id="m"></span></p>
+    <p><strong>Intercepto (b):</strong> <span id="b"></span></p>
+    <p><strong>Ecuación:</strong> <span id="ecuacion"></span></p>
+    <p><strong>R²:</strong> <span id="r2"></span></p>
+  </div>
+
+  <canvas id="grafico"></canvas>
+
+</div>
+
+<script>
+
+let chart;
+
+function calcular(){
+
+  const filas = document.querySelectorAll("#tabla tbody tr");
+
+  let x = [];
+  let y = [];
+
+  filas.forEach(fila => {
+
+    const d = parseFloat(fila.cells[0].querySelector("input").value);
+    const l = parseFloat(fila.cells[1].querySelector("input").value);
+
+    x.push(d);
+    y.push(l);
+
+  });
+
+  const n = x.length;
+
+  let sumX = 0;
+  let sumY = 0;
+  let sumXY = 0;
+  let sumX2 = 0;
+
+  for(let i=0; i<n; i++){
+
+    sumX += x[i];
+    sumY += y[i];
+    sumXY += x[i] * y[i];
+    sumX2 += x[i] * x[i];
+
+  }
+
+  const m = (n * sumXY - sumX * sumY) /
+            (n * sumX2 - sumX * sumX);
+
+  const b = (sumY - m * sumX) / n;
+
+  // Predicciones
+  let yPred = [];
+
+  for(let i=0; i<n; i++){
+    yPred.push(m * x[i] + b);
+  }
+
+  // Calcular R²
+  let mediaY = sumY / n;
+
+  let ssTot = 0;
+  let ssRes = 0;
+
+  for(let i=0; i<n; i++){
+
+    ssTot += (y[i] - mediaY) ** 2;
+    ssRes += (y[i] - yPred[i]) ** 2;
+
+  }
+
+  const r2 = 1 - (ssRes / ssTot);
+
+  // Mostrar resultados
+  document.getElementById("m").innerText = m.toFixed(4);
+  document.getElementById("b").innerText = b.toFixed(4);
+  document.getElementById("ecuacion").innerText =
+    `L(d) = ${m.toFixed(4)}d + ${b.toFixed(4)}`;
+
+  document.getElementById("r2").innerText = r2.toFixed(4);
+
+  // Datos línea
+  const linea = x.map(valor => ({
+    x: valor,
+    y: m * valor + b
+  }));
+
+  // Destruir gráfico anterior
+  if(chart){
+    chart.destroy();
+  }
+
+  // Crear gráfico
+  const ctx = document.getElementById("grafico");
+
+  chart = new Chart(ctx, {
+
+    type: 'scatter',
+
+    data: {
+      datasets: [
+
+        {
+          label: 'Datos Experimentales',
+          data: x.map((valor, i) => ({
+            x: valor,
+            y: y[i]
+          })),
+          pointRadius: 6
+        },
+
+        {
+          label: 'Ajuste Lineal',
+          data: linea,
+          type: 'line',
+          fill: false,
+          tension: 0
+        }
+
+      ]
+    },
+
+    options: {
+
+      responsive:true,
+
+      scales: {
+
+        x: {
+          title: {
+            display:true,
+            text:'X'
+          }
+        },
+
+        y: {
+          title: {
+            display:true,
+            text:'Y'
+          }
+        }
+
+      }
+
+    }
+
+  });
+
+}
+
+
+function agregarFila(){
+  const tbody = document.querySelector("#tabla tbody");
+  const fila = document.createElement("tr");
+  fila.innerHTML = `
+    <td><input type="number" step="0.1" value="0"></td>
+    <td><input type="number" step="0.1" value="0"></td>
+  `;
+  tbody.appendChild(fila);
+
+  fila.querySelectorAll("input").forEach(inp=>{
+    inp.addEventListener("input", calcular);
+  });
+
+  calcular();
+}
+
+function eliminarFila(){
+  const filas = document.querySelectorAll("#tabla tbody tr");
+  if(filas.length > 1){
+    filas[filas.length-1].remove();
+    calcular();
+  }
+}
+
+document.querySelectorAll('#tabla input').forEach(inp=>{
+  inp.addEventListener('input', calcular);
+});
+
+calcular();
+
+
+</script>
+
+</body>
+</html>
